@@ -21,37 +21,31 @@ client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
-client.on('messageCreate', async message => {
-    console.log('message:: ', message);
-    // Check if the message starts with '#analyQuery'
+client.on('messageCreate', async (message) => {
+    // Check if the message starts with your preferred prefix (e.g., '#analyQuery')
     if (message.content.startsWith('#analyQuery')) {
-        // Extract the user's query
-        const userQuery = message.content.substring('#analyQuery'.length).trim();
-
-        console.log('userQuery:: ', userQuery);
-        // Reply to the user acknowledging their query
-        message.reply(`Your query has been recorded. Please wait for the response.`);
-
-        try {
-            // Generate response using OpenAI GPT API
-            const response = await openai.chat.completions.create({
-                messages: [{ role: "system", content: userQuery }],
-                model: "gpt-3.5-turbo",
-                // prompt: userQuery,
-                // maxTokens: 150
-            });
-            // Reply to the user with the generated response
-            message.reply(response.data.choices[0].text.trim());
-        } catch (err) {
-            console.error('Error generating response:', err);
-            message.reply('An error occurred while processing your query. Please try again later.');
-        }
-
-        // Here you can store the user's query and response in your database
-        // For example, you can use MongoDB to store this data
-        // You can call a function to store the data in your database
-        // storeUserQueryResponse(message.author.id, userQuery, response);
+      const userQuery = message.content.substring('#analyQuery'.length).trim();
+  
+      // Send an initial response indicating query processing
+      message.reply(`Your query has been received. Please wait for the response.`);
+  
+      try {
+        // Generate response using OpenAI GPT API
+        const response = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo", // Consider using a more suitable model
+          messages: [{ role: "user", content: userQuery }],
+          max_tokens: 15, // Adjust token limit as needed
+          temperature: 0.7, // Adjust temperature for response creativity
+          top_p: 1.0, // Adjust for more likely vs. surprising responses
+        });
+  
+        // Reply to the user with the generated response
+        message.reply(response.data.choices[0].text.trim());
+      } catch (err) {
+        console.error('Error generating response:', err);
+        message.reply('An error occurred while processing your query. Please try again later.');
+      }
     }
-});
+  });
 
 client.login(DISCORD_BOT_TOKEN);
