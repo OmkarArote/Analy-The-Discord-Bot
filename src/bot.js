@@ -4,6 +4,9 @@ const { DISCORD_BOT_TOKEN = '' } = process.env;
 
 // Setting up the required libs
 const { Client, GatewayIntentBits } = require('discord.js');
+const { OpenAI } = require('openai');
+
+const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
 // Setting up client
 const client = new Client({
@@ -27,7 +30,22 @@ client.on('messageCreate', async message => {
 
         console.log('userQuery:: ', userQuery);
         // Reply to the user acknowledging their query
-        // message.reply(`Your query "${userQuery}" has been recorded. Please wait for the response.`);
+        message.reply(`Your query has been recorded. Please wait for the response.`);
+
+        try {
+            // Generate response using OpenAI GPT API
+            const response = await openai.chat.completions.create({
+                messages: [{ role: "system", content: userQuery }],
+                model: "gpt-3.5-turbo",
+                // prompt: userQuery,
+                // maxTokens: 150
+            });
+            // Reply to the user with the generated response
+            message.reply(response.data.choices[0].text.trim());
+        } catch (err) {
+            console.error('Error generating response:', err);
+            message.reply('An error occurred while processing your query. Please try again later.');
+        }
 
         // Here you can store the user's query and response in your database
         // For example, you can use MongoDB to store this data
