@@ -5,9 +5,11 @@ const { DISCORD_BOT_TOKEN = '', GOOGLE_API_TOKEN = '' } = process.env;
 // Setting up the required libs
 const { Client, GatewayIntentBits } = require('discord.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { determineQueryTopic, mongo } = require('../helper/util');
 
 // Declaring Constants
 const MODEL = "gemini-pro";
+const collectionName = 'queries';
 
 // Google Gemini Api
 const ai = new GoogleGenerativeAI(GOOGLE_API_TOKEN);
@@ -30,6 +32,10 @@ client.on('messageCreate', async (message) => {
   // Bots Message Must Be Ignored
   if (message?.author?.bot) return;
 
+  console.log('============= Message Details START =============');
+  console.log('message::detais:: ', { id: message.id, authorId: message.author.id, authorName: message.author.username });
+  console.log('============= Message Details END =============');
+
   // Check if the message starts with your preferred prefix (e.g., '#analyQuery')
   if (message.content.startsWith('#analyQuery')) {
     const userQuery = message.content.substring('#analyQuery'.length).trim();
@@ -41,6 +47,23 @@ client.on('messageCreate', async (message) => {
       // Generate response using GoogleAI API
       const { response } = await model.generateContent(userQuery);
       const answerMsg = await message.reply({ content: response.text() });
+
+      console.log('response:: ', JSON.stringify(response));
+      const queryData = {
+        user: {
+          id: message.author.id || '',
+          name: message.author.username || '',
+        },
+        queryId: message.id || '',
+        queryText: userQuery || '',
+        topic: determineQueryTopic(userQuery) || "other", // Function to categorize the topic
+        response: response.text() || '',
+        createdAt: new Date(),
+      };
+
+      // insert data in mongo
+      let insertData = await mongo.insertOne(collectionName, queryData);
+      console.log('insertData:: ', insertData);
 
       // Reply to the user with the generated response
       // Ask for rating and feedback
@@ -84,30 +107,5 @@ client.on('messageCreate', async (message) => {
     }
   }
 });
-
-
-// client.on('messageCreate', async (message) => {
-//   // Bots Message Must Be Ignored
-//   if (message?.author?.bot) return;
-
-//   // Check if the message starts with your preferred prefix (e.g., '#analyQuery')
-//   if (message.content.startsWith('#analyQuery')) {
-//     const userQuery = message.content.substring('#analyQuery'.length).trim();
-
-//     // Send an initial response indicating query processing
-//     message.reply(`Your query has been received. Please wait for the response.`);
-
-//     try {
-//       // Generate response using GoogleAI API
-//       const { response } = await model.generateContent(userQuery);
-//       message.reply({ content: response.text() });
-
-//       // Reply to the user with the generated response
-//     } catch (err) {
-//       console.error('Error generating response:', err);
-//       message.reply('An error occurred while processing your query. Please try again later.');
-//     }
-//   }
-// });
 
 client.login(DISCORD_BOT_TOKEN);
