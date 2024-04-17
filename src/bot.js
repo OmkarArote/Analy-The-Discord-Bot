@@ -46,9 +46,9 @@ client.on('messageCreate', async (message) => {
     try {
       // Generate response using GoogleAI API
       const { response } = await model.generateContent(userQuery);
-      const answerMsg = await message.reply({ content: response.text() });
+      const truncatedResponse = response.text().substring(0, 2000);
+      const answerMsg = await message.reply({ content: truncatedResponse });
 
-      console.log('response:: ', JSON.stringify(response));
       const queryData = {
         user: {
           id: message.author.id || '',
@@ -81,17 +81,26 @@ client.on('messageCreate', async (message) => {
           if (!isNaN(rating) && rating >= 0 && rating <= 5) {
             // Process rating
             // You can save the rating or perform any other action here
-            await message.channel.send(`Thank you for rating! You rated ${rating} stars.`);
-            collector.stop();
+            await message.channel.send(`Thank you for rating! You rated ${rating} stars. You can move further with the feedback by typing: #feedback <your feedback> or type #done to close the feedback survey`);
+            // collector.stop();
+            let updateRating = await mongo.updateOne(collectionName, { queryId: message.id }, { $set: { rating } });
+            console.log('updateRating:: ', updateRating);
           } else {
             await message.channel.send(`Please provide a valid rating between 0 and 5.`);
           }
-        } else if (content.startsWith('#feedback')) {
+        }
+        if (content.startsWith('#done')) {
+          await message.channel.send(`The feedback process has been closed, have a good day ahead!`);
+          collector.stop();
+        }
+        if (content.startsWith('#feedback')) {
           const feedback = content.substring('#feedback'.length).trim();
           // Process feedback
           // You can save the feedback or perform any other action here
           await message.channel.send(`Thank you for your feedback: ${feedback}`);
           collector.stop();
+          let updateFeedback = await mongo.updateOne(collectionName, { queryId: message.id }, { $set: { feedback } });
+          console.log('updateFeedback:: ', updateFeedback);
         }
       });
 
